@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Types
+// ============================================
+// TYPES
+// ============================================
+
+type RouteContext = {
+  params: Promise<{ id: string }>
+}
+
 interface Task {
   id: string
   title: string
@@ -45,7 +52,10 @@ interface UpdateTaskRequest {
   tags?: string[]
 }
 
-// Mock tasks database
+// ============================================
+// MOCK DATA
+// ============================================
+
 let tasks: Task[] = [
   {
     id: '1',
@@ -145,7 +155,6 @@ let tasks: Task[] = [
   }
 ]
 
-// Mock users for assignee validation
 const validAssignees = [
   { id: 'user1', name: 'Dr. Ahmed Khan' },
   { id: 'user2', name: 'Dr. Fatima Ali' },
@@ -155,7 +164,6 @@ const validAssignees = [
   { id: 'user6', name: 'Purchase Dept' }
 ]
 
-// Mock projects for validation
 const validProjects = [
   { id: 'proj1', name: 'Hospital Management System' },
   { id: 'proj2', name: 'New Wing Construction' },
@@ -163,7 +171,10 @@ const validProjects = [
   { id: 'proj4', name: 'Staff Training Program' }
 ]
 
-// Helper function to verify authentication
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
 const verifyAuth = (request: NextRequest): { userId: string | null; error?: NextResponse } => {
   const token = request.cookies.get('auth-token')?.value
   
@@ -178,7 +189,6 @@ const verifyAuth = (request: NextRequest): { userId: string | null; error?: Next
   }
 
   try {
-    // Decode token (in production, verify JWT)
     const userId = Buffer.from(token, 'base64').toString().split('-')[0]
     return { userId }
   } catch {
@@ -192,18 +202,15 @@ const verifyAuth = (request: NextRequest): { userId: string | null; error?: Next
   }
 }
 
-// Helper function to generate unique ID
 const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substring(2)
 }
 
-// Helper function to validate date
 const isValidDate = (dateString: string): boolean => {
   const date = new Date(dateString)
   return date instanceof Date && !isNaN(date.getTime())
 }
 
-// Helper function to validate task data
 const validateTaskData = (data: Partial<CreateTaskRequest>): { valid: boolean; errors: string[] } => {
   const errors: string[] = []
 
@@ -244,14 +251,15 @@ const validateTaskData = (data: Partial<CreateTaskRequest>): { valid: boolean; e
   return { valid: errors.length === 0, errors }
 }
 
-// GET /api/tasks - Get all tasks with filters
+// ============================================
+// GET /api/tasks
+// ============================================
+
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
     const auth = verifyAuth(request)
     if (auth.error) return auth.error
 
-    // Get query parameters
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const priority = searchParams.get('priority')
@@ -265,7 +273,6 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'dueDate'
     const sortOrder = searchParams.get('sortOrder') || 'asc'
 
-    // Filter tasks
     let filteredTasks = [...tasks]
 
     if (status) {
@@ -303,7 +310,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Sort tasks
     filteredTasks.sort((a: any, b: any) => {
       const aVal = a[sortBy]
       const bVal = b[sortBy]
@@ -314,12 +320,10 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Paginate
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
     const paginatedTasks = filteredTasks.slice(startIndex, endIndex)
 
-    // Calculate summary stats
     const summary = {
       total: tasks.length,
       todo: tasks.filter(t => t.status === 'todo').length,
@@ -361,10 +365,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/tasks - Create new task
+// ============================================
+// POST /api/tasks
+// ============================================
+
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
     const auth = verifyAuth(request)
     if (auth.error) return auth.error
     if (!auth.userId) {
@@ -374,11 +380,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse request body
     const body = await request.json() as CreateTaskRequest
     const { title, description, priority, assigneeId, projectId, dueDate, estimatedHours, tags } = body
 
-    // Validate required fields
     if (!title || !description || !priority || !assigneeId || !projectId || !dueDate) {
       return NextResponse.json(
         { 
@@ -389,7 +393,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate data
     const validation = validateTaskData(body)
     if (!validation.valid) {
       return NextResponse.json(
@@ -401,11 +404,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get assignee name
     const assignee = validAssignees.find(a => a.id === assigneeId)
     const project = validProjects.find(p => p.id === projectId)
 
-    // Create new task
     const newTask: Task = {
       id: generateId(),
       title,
@@ -426,7 +427,6 @@ export async function POST(request: NextRequest) {
       actualHours: 0
     }
 
-    // Add to database
     tasks.push(newTask)
 
     return NextResponse.json({
@@ -450,23 +450,20 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================
-// ⚠️ YAHAN SE ERROR THA - YE 2 LINES FIX KAR DI
+// PUT /api/tasks/[id]
 // ============================================
 
-// PUT /api/tasks/[id] - Update task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }  // ✅ FIXED LINE 1: Promise add kiya
+  context: RouteContext
 ) {
   try {
-    // Verify authentication
     const auth = verifyAuth(request)
     if (auth.error) return auth.error
 
-    const { id } = await params  // ✅ FIXED LINE 2: await params
+    const { id } = await context.params
     const updates = await request.json() as UpdateTaskRequest
 
-    // Find task
     const taskIndex = tasks.findIndex(t => t.id === id)
     if (taskIndex === -1) {
       return NextResponse.json(
@@ -475,7 +472,6 @@ export async function PUT(
       )
     }
 
-    // Validate updates
     if (updates.title && updates.title.length < 3) {
       return NextResponse.json(
         { success: false, error: 'Title must be at least 3 characters' },
@@ -490,14 +486,12 @@ export async function PUT(
       )
     }
 
-    // Update task
     const updatedTask = {
       ...tasks[taskIndex],
       ...updates,
       updatedAt: new Date().toISOString()
     }
 
-    // If status changed to done, set completedAt
     if (updates.status === 'done' && tasks[taskIndex].status !== 'done') {
       updatedTask.completedAt = new Date().toISOString()
     }
@@ -524,10 +518,12 @@ export async function PUT(
   }
 }
 
-// PATCH /api/tasks/bulk - Bulk update tasks
+// ============================================
+// PATCH /api/tasks/bulk
+// ============================================
+
 export async function PATCH(request: NextRequest) {
   try {
-    // Verify authentication
     const auth = verifyAuth(request)
     if (auth.error) return auth.error
 
@@ -540,7 +536,6 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Update each task
     const updatedTasks = []
     for (const taskId of taskIds) {
       const taskIndex = tasks.findIndex(t => t.id === taskId)
@@ -551,7 +546,6 @@ export async function PATCH(request: NextRequest) {
           updatedAt: new Date().toISOString()
         }
         
-        // If status changed to done, set completedAt
         if (updates.status === 'done' && tasks[taskIndex].status !== 'done') {
           tasks[taskIndex].completedAt = new Date().toISOString()
         }
@@ -575,19 +569,20 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// DELETE /api/tasks/[id] - Delete task
+// ============================================
+// DELETE /api/tasks/[id]
+// ============================================
+
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }  // ✅ FIXED LINE 3: Promise add kiya
+  context: RouteContext
 ) {
   try {
-    // Verify authentication
     const auth = verifyAuth(request)
     if (auth.error) return auth.error
 
-    const { id } = await params  // ✅ FIXED LINE 4: await params
+    const { id } = await context.params
 
-    // Find task
     const taskIndex = tasks.findIndex(t => t.id === id)
     if (taskIndex === -1) {
       return NextResponse.json(
@@ -596,7 +591,6 @@ export async function DELETE(
       )
     }
 
-    // Remove task
     tasks.splice(taskIndex, 1)
 
     return NextResponse.json({
@@ -613,7 +607,10 @@ export async function DELETE(
   }
 }
 
-// OPTIONS /api/tasks - CORS preflight
+// ============================================
+// OPTIONS /api/tasks
+// ============================================
+
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
