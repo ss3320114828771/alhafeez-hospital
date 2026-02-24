@@ -449,21 +449,25 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ============================================
+// ⚠️ YAHAN SE ERROR THA - YE 2 LINES FIX KAR DI
+// ============================================
+
 // PUT /api/tasks/[id] - Update task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }  // ✅ FIXED: params is Promise
+  { params }: { params: Promise<{ id: string }> }  // ✅ FIXED LINE 1: Promise add kiya
 ) {
   try {
     // Verify authentication
     const auth = verifyAuth(request)
     if (auth.error) return auth.error
 
-    const { id } = await params  // ✅ FIXED: await params
+    const { id } = await params  // ✅ FIXED LINE 2: await params
     const updates = await request.json() as UpdateTaskRequest
 
     // Find task
-    const taskIndex = tasks.findIndex(t => t.id === id)  // ✅ FIXED: use id variable
+    const taskIndex = tasks.findIndex(t => t.id === id)
     if (taskIndex === -1) {
       return NextResponse.json(
         { success: false, error: 'Task not found' },
@@ -574,17 +578,17 @@ export async function PATCH(request: NextRequest) {
 // DELETE /api/tasks/[id] - Delete task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }  // ✅ FIXED: params is Promise
+  { params }: { params: Promise<{ id: string }> }  // ✅ FIXED LINE 3: Promise add kiya
 ) {
   try {
     // Verify authentication
     const auth = verifyAuth(request)
     if (auth.error) return auth.error
 
-    const { id } = await params  // ✅ FIXED: await params
+    const { id } = await params  // ✅ FIXED LINE 4: await params
 
     // Find task
-    const taskIndex = tasks.findIndex(t => t.id === id)  // ✅ FIXED: use id variable
+    const taskIndex = tasks.findIndex(t => t.id === id)
     if (taskIndex === -1) {
       return NextResponse.json(
         { success: false, error: 'Task not found' },
