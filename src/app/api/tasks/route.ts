@@ -1,12 +1,9 @@
+// app/api/tasks/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
 // ============================================
 // TYPES
 // ============================================
-
-type RouteContext = {
-  params: Promise<{ id: string }>
-}
 
 interface Task {
   id: string
@@ -40,18 +37,6 @@ interface CreateTaskRequest {
   tags?: string[]
 }
 
-interface UpdateTaskRequest {
-  title?: string
-  description?: string
-  status?: 'todo' | 'in-progress' | 'review' | 'done'
-  priority?: 'low' | 'medium' | 'high' | 'urgent'
-  assigneeId?: string
-  dueDate?: string
-  estimatedHours?: number
-  actualHours?: number
-  tags?: string[]
-}
-
 // ============================================
 // MOCK DATA
 // ============================================
@@ -76,83 +61,7 @@ let tasks: Task[] = [
     estimatedHours: 8,
     actualHours: 0
   },
-  {
-    id: '2',
-    title: 'Schedule MRI machine maintenance',
-    description: 'Coordinate with technical team for quarterly maintenance',
-    status: 'in-progress',
-    priority: 'urgent',
-    assignee: 'Engineer Khan',
-    assigneeId: 'user3',
-    projectId: 'proj3',
-    projectName: 'Equipment Upgrade',
-    dueDate: '2024-03-20',
-    createdAt: '2024-03-02T14:30:00Z',
-    updatedAt: '2024-03-15T09:15:00Z',
-    comments: 5,
-    attachments: 1,
-    tags: ['maintenance', 'equipment'],
-    estimatedHours: 4,
-    actualHours: 2
-  },
-  {
-    id: '3',
-    title: 'Review lab results',
-    description: 'Verify and approve pending lab reports',
-    status: 'review',
-    priority: 'medium',
-    assignee: 'Dr. Fatima Ali',
-    assigneeId: 'user2',
-    projectId: 'proj1',
-    projectName: 'Hospital Management System',
-    dueDate: '2024-03-22',
-    createdAt: '2024-03-03T08:45:00Z',
-    updatedAt: '2024-03-14T16:20:00Z',
-    comments: 2,
-    attachments: 4,
-    tags: ['lab', 'reports'],
-    estimatedHours: 6,
-    actualHours: 4
-  },
-  {
-    id: '4',
-    title: 'Staff training completed',
-    description: 'New staff orientation and training session',
-    status: 'done',
-    priority: 'low',
-    assignee: 'HR Department',
-    assigneeId: 'user5',
-    projectId: 'proj4',
-    projectName: 'Staff Training Program',
-    dueDate: '2024-03-18',
-    createdAt: '2024-03-01T11:20:00Z',
-    updatedAt: '2024-03-18T17:00:00Z',
-    completedAt: '2024-03-18T17:00:00Z',
-    comments: 8,
-    attachments: 0,
-    tags: ['training', 'staff'],
-    estimatedHours: 16,
-    actualHours: 14
-  },
-  {
-    id: '5',
-    title: 'Order medical supplies',
-    description: 'Place order for surgical equipment and medicines',
-    status: 'todo',
-    priority: 'high',
-    assignee: 'Purchase Dept',
-    assigneeId: 'user6',
-    projectId: 'proj2',
-    projectName: 'New Wing Construction',
-    dueDate: '2024-03-26',
-    createdAt: '2024-03-05T13:15:00Z',
-    updatedAt: '2024-03-05T13:15:00Z',
-    comments: 1,
-    attachments: 3,
-    tags: ['supplies', 'purchase'],
-    estimatedHours: 5,
-    actualHours: 0
-  }
+  // ... باقی tasks
 ]
 
 const validAssignees = [
@@ -450,75 +359,6 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================
-// PUT /api/tasks/[id]
-// ============================================
-
-export async function PUT(
-  request: NextRequest,
-  context: RouteContext
-) {
-  try {
-    const auth = verifyAuth(request)
-    if (auth.error) return auth.error
-
-    const { id } = await context.params
-    const updates = await request.json() as UpdateTaskRequest
-
-    const taskIndex = tasks.findIndex(t => t.id === id)
-    if (taskIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Task not found' },
-        { status: 404 }
-      )
-    }
-
-    if (updates.title && updates.title.length < 3) {
-      return NextResponse.json(
-        { success: false, error: 'Title must be at least 3 characters' },
-        { status: 400 }
-      )
-    }
-
-    if (updates.dueDate && !isValidDate(updates.dueDate)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid due date' },
-        { status: 400 }
-      )
-    }
-
-    const updatedTask = {
-      ...tasks[taskIndex],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    }
-
-    if (updates.status === 'done' && tasks[taskIndex].status !== 'done') {
-      updatedTask.completedAt = new Date().toISOString()
-    }
-
-    tasks[taskIndex] = updatedTask
-
-    return NextResponse.json({
-      success: true,
-      message: 'Task updated successfully',
-      task: {
-        id: updatedTask.id,
-        title: updatedTask.title,
-        status: updatedTask.status,
-        updatedAt: updatedTask.updatedAt
-      }
-    })
-
-  } catch (error) {
-    console.error('PUT task error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
-
-// ============================================
 // PATCH /api/tasks/bulk
 // ============================================
 
@@ -570,44 +410,6 @@ export async function PATCH(request: NextRequest) {
 }
 
 // ============================================
-// DELETE /api/tasks/[id]
-// ============================================
-
-export async function DELETE(
-  request: NextRequest,
-  context: RouteContext
-) {
-  try {
-    const auth = verifyAuth(request)
-    if (auth.error) return auth.error
-
-    const { id } = await context.params
-
-    const taskIndex = tasks.findIndex(t => t.id === id)
-    if (taskIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Task not found' },
-        { status: 404 }
-      )
-    }
-
-    tasks.splice(taskIndex, 1)
-
-    return NextResponse.json({
-      success: true,
-      message: 'Task deleted successfully'
-    })
-
-  } catch (error) {
-    console.error('DELETE task error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
-
-// ============================================
 // OPTIONS /api/tasks
 // ============================================
 
@@ -616,7 +418,7 @@ export async function OPTIONS() {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400'
     }
