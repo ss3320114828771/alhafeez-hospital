@@ -452,18 +452,18 @@ export async function POST(request: NextRequest) {
 // PUT /api/tasks/[id] - Update task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }  // ✅ FIXED: params is Promise
 ) {
   try {
     // Verify authentication
     const auth = verifyAuth(request)
     if (auth.error) return auth.error
 
-    const taskId = params.id
+    const { id } = await params  // ✅ FIXED: await params
     const updates = await request.json() as UpdateTaskRequest
 
     // Find task
-    const taskIndex = tasks.findIndex(t => t.id === taskId)
+    const taskIndex = tasks.findIndex(t => t.id === id)  // ✅ FIXED: use id variable
     if (taskIndex === -1) {
       return NextResponse.json(
         { success: false, error: 'Task not found' },
@@ -574,17 +574,17 @@ export async function PATCH(request: NextRequest) {
 // DELETE /api/tasks/[id] - Delete task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }  // ✅ FIXED: params is Promise
 ) {
   try {
     // Verify authentication
     const auth = verifyAuth(request)
     if (auth.error) return auth.error
 
-    const taskId = params.id
+    const { id } = await params  // ✅ FIXED: await params
 
     // Find task
-    const taskIndex = tasks.findIndex(t => t.id === taskId)
+    const taskIndex = tasks.findIndex(t => t.id === id)  // ✅ FIXED: use id variable
     if (taskIndex === -1) {
       return NextResponse.json(
         { success: false, error: 'Task not found' },
